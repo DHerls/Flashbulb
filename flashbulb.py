@@ -62,21 +62,23 @@ def get_object_count(bucket, prefix):
     return total_objects
 
 
-def wait_for_completion(bucket, prefix, num_urls, silent=False):
-    timeout = 60
+def wait_for_completion(bucket, prefix, num_targets, silent=False):
+    timeout = 120
     start = time.time()
     while time.time() - start < timeout:
-        num_files = get_object_count(bucket, prefix)
-        if num_files < num_urls:
-            if not silent:
-                logger.info('Waiting for remaining URLs: {}/{} completed'.format(num_files, num_urls))
-            time.sleep(1)
+        total_objects = get_object_count(bucket, prefix)
+        errors = get_object_count(bucket, prefix + 'errors')
+        successes = (total_objects - errors) // 2
+        if not silent:
+            logger.info('Status: {} successful, {} errored, {} remaining'.format(successes, errors, num_targets - successes - errors))
+        if successes + errors < num_targets:
+            time.sleep(5)
         else:
             if not silent:
-                logger.info("All URLs uploaded")
+                logger.info("All targets accounted for")
             return True
     if not silent:
-        logger.error("Timeout while waiting for URL uploads. Some may have failed.")
+        logger.error("Timeout while waiting for target completion. Some may have failed.")
     return False
 
 
@@ -84,7 +86,7 @@ def test_screenshot(region, bucket):
     """Test screenshot lambda is working and can upload to the specified bucket"""
     prefix = str(uuid.uuid4())
     invoke_screenshot(region, 'https://example.com', bucket, prefix)
-    result = wait_for_completion(bucket, prefix, 2, True)
+    result = wait_for_completion(bucket, prefix, 1, True)
     if result:
         aws_s3 = boto3.client('s3')
         aws_s3.delete_object(Bucket=bucket, Key=prefix + '/https-example.com.png')
@@ -143,8 +145,8 @@ if __name__ == '__main__':
     config = parser.parse_args()
     if config.prefix.startswith('/'):
         config.prefix = config.prefix[1:]
-    if config.prefix.endswith('/'):
-        config.prefix = config.prefix[:-1]
+    if not config.prefix.endswith('/') and len(config.prefix) > 0:
+        config.prefix += '/'
     
     logger.info("Flashbulb is warming up.")
 
@@ -167,4 +169,4 @@ if __name__ == '__main__':
     check_regions(config.regions, config.bucket, config.skip_tests)
     logger.info("Checks complete. Safety goggles on!")
     invoke_flashbulb(config.regions, hosts, config.bucket, config.prefix)
-    wait_for_completion(config.bucket, config.prefix, len(hosts) * 2)
+    wait_for_completion(config.bucket, config.prefix, len(hosts))
