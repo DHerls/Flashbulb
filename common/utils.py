@@ -53,13 +53,15 @@ def parse_regions(region_string):
             'The following regions are disabled for your account or do not exist: {}'.format(', '.join(invalid_regions)))
     return sorted(list(input_regions))
 
-def get_user_response(message, options):
+def get_user_response(message, options, default=None):
     """Return an option the user selected from a list of available options."""
     prompt = '{} > '.format(message)
     userinput = input(prompt)
     while True:
-        if userinput in options:
-            return userinput
+        if userinput.lower() in options:
+            return userinput.lower()
+        elif default is not None and userinput.strip() == '':
+            return default
         else:
             print("Please select a valid option.")
             userinput = input(prompt)

@@ -10,8 +10,9 @@ import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
 from common.constants import SCREENSHOT_LAMBDA_NAME
-from common.utils import check_chromium_layer, check_credentials, check_screenshot_lambda, parse_regions
+from common.utils import check_chromium_layer, check_credentials, check_screenshot_lambda, get_user_response, parse_regions
 from urllib.parse import urlparse, urlunparse
+import ipaddress
 
 
 def check_regions(regions, bucket, skip_tests):
@@ -91,9 +92,39 @@ def test_screenshot(region, bucket):
     return result
 
 
+def parse_host(line, http_and_https):
+    """Return a list of valid hosts given a line containing a URL, IP address, or CIDR."""
+    hosts = []
+    
+    try:
+        network = ipaddress.ip_network(line)
+        for ip in network.hosts():
+            if http_and_https:
+                hosts.append('https://' + ip.exploded)
+            hosts.append('http://' + ip.exploded)
+        return hosts
+    except ValueError:
+        # Line is not a CIDR address, continue as normal
+        pass
+    
+    if line.find('://') == -1:
+        line = 'http://' + line
+    
+    if config.http_and_https:
+        url = urlparse(line)
+        url = url._replace(scheme='http')
+        hosts.append(urlunparse(url))
+        url = url._replace(scheme='https')
+        hosts.append(urlunparse(url))
+    else:
+        hosts.append(line)
+    
+    return hosts
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('url_list_file', type=open, help="File of URLs to scan")
+    parser.add_argument('target_list', type=open, help="File of targets to scan")
     parser.add_argument('bucket', help="S3 bucket to upload results")
     parser.add_argument('--regions', type=parse_regions, default="us-east-2", help="A comma-separated list of AWS regions to distribute Flashbulb jobs")
     parser.add_argument('--prefix', default='', help="Prefix to add to filenames in the bucket. By default, files are placed in bucket root.")
@@ -115,39 +146,25 @@ if __name__ == '__main__':
     if config.prefix.endswith('/'):
         config.prefix = config.prefix[:-1]
     
-    errors = False
-    file_name = config.url_list_file.name
-    urls = []
-    for i, line in enumerate(config.url_list_file.readlines()):
+    logger.info("Flashbulb is warming up.")
+
+    hosts = []
+    for line in config.target_list.readlines():
         line = line.strip()
         if not line:
             continue
-        if line.find('.') == -1:
-            logger.error('Line {} in {} ({}) is not a FQDN.'.format(i + 1, file_name, line))
-            errors = True
-            continue
-        if line.find('://') == -1:
-            line = 'http://' + line
+        hosts.extend(parse_host(line, config.http_and_https))
+    user_input = get_user_response(
+        'Flashbulb found {} potential targets. Continue? (y/N)'.format(len(hosts)), ['y', 'n'], 'n')
+    if user_input == 'n':
+        exit(0)
 
-        if config.http_and_https:
-            url = urlparse(line)
-            url = url._replace(scheme='http')
-            urls.append(urlunparse(url))
-            url = url._replace(scheme='https')
-            urls.append(urlunparse(url))
-        else:
-            urls.append(line)
-    if errors:
-        exit(-1)
-    
     # Dedupe
-    urls = list(set(urls))
-
-    logger.info("Flashbulb is warming up.")
+    hosts = list(set(hosts))
 
     if config.skip_tests:
         logger.warn("Skipping active screenshot function tests.")
     check_regions(config.regions, config.bucket, config.skip_tests)
     logger.info("Checks complete. Safety goggles on!")
-    invoke_flashbulb(config.regions, urls, config.bucket, config.prefix)
-    wait_for_completion(config.bucket, config.prefix, len(urls) * 2)
+    invoke_flashbulb(config.regions, hosts, config.bucket, config.prefix)
+    wait_for_completion(config.bucket, config.prefix, len(hosts) * 2)
