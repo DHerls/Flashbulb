@@ -33,7 +33,7 @@ class SemanticVersion:
 FLASHBULB_BUCKET_PREFIX = 'flashbulb-'
 
 SCREENSHOT_LAMBDA_NAME = 'Flashbulb--Screenshot'
-SCREENSHOT_LAMBDA_VERSION = SemanticVersion('0.4.3')
+SCREENSHOT_LAMBDA_VERSION = SemanticVersion('0.5.0')
 SCREENSHOT_S3_KEY = 'screenshot/{version}/function.zip'.format(
     version=str(SCREENSHOT_LAMBDA_VERSION))
 

@@ -48,7 +48,12 @@ exports.handler = async (event, context, callback) => {
       finalUrl: page.url(),
       title: await page.title(),
       content: await page.content(),
+      headers: httpResponse.headers(),
       ipAddress: httpResponse.remoteAddress(),
+      status: {
+          code: httpResponse.status(),
+          text: httpResponse.statusText()
+      }
     };
 
     let remotePageInfoPath = safeUrl + ".json";
