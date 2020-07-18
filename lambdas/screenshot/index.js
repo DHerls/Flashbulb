@@ -11,6 +11,8 @@ exports.handler = async (event, context, callback) => {
     
     const safeUrl = event.url.replace("://", "-").replace(/\//g, "__");
     const prefix = event.prefix || '';
+    // const scriptsDir = '/tmp/scripts'
+    // fs.mkdirSync(scriptsDir)
     try {
         browser = await chromium.puppeteer.launch({
             args: chromium.args,
@@ -21,6 +23,14 @@ exports.handler = async (event, context, callback) => {
         });
         
         let page = await browser.newPage();
+
+        let scripts = [];
+
+        page.on('response', async function(response) {
+            if (response.url().match(/.+?\.js(?:\?.+)?/)){
+                scripts.push(response.url())
+            }
+        })
         
         const localScreenshotPath = "/tmp/screenshot.png"
         const httpResponse = await page.goto(event.url || "https://example.com");
@@ -50,7 +60,8 @@ exports.handler = async (event, context, callback) => {
             status: {
                 code: httpResponse.status(),
                 text: httpResponse.statusText()
-            }
+            },
+            scripts: scripts
         };
         
         let remotePageInfoPath = prefix + safeUrl + ".json";
