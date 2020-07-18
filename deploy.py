@@ -1,58 +1,54 @@
 import argparse
 import logging
-from common.constants import CHROMIUM_LAYER_NAME, CHROMIUM_LAYER_VERSION, CHROMIUM_S3_KEY, FLASHBULB_BUCKET_PREFIX, SCREENSHOT_LAMBDA_NAME, SCREENSHOT_LAMBDA_VERSION, SCREENSHOT_S3_KEY
-from common.utils import check_credentials, get_lambda_by_name, get_layer_by_name, parse_regions
+from common.constants import FUNCTIONS, LAYERS, FLASHBULB_BUCKET_PREFIX
+from common.utils import check_credentials, get_function_by_key, get_function_name, get_function_s3_key, get_layer_name, get_layer_s3_key, parse_regions
 import re
 import boto3
 
 
-def deploy_chromium_layer(region):
-    """Attempt to auto-setup headless chromium lambda layer in the given region"""
+def deploy_layer(key, region):
     aws_lambda = boto3.client('lambda', region_name=region)
-    logger.info("Deploying Chromium layer in {}".format(region))
+    logger.info("Deploying {} layer in {}".format(key.title(), region))
     response = aws_lambda.publish_layer_version(
-        LayerName=CHROMIUM_LAYER_NAME,
-        Description=str(CHROMIUM_LAYER_VERSION),
+        LayerName=get_layer_name(key),
+        Description=str(LAYERS[key]['version']),
         Content={
             'S3Bucket': FLASHBULB_BUCKET_PREFIX + region,
-            'S3Key': CHROMIUM_S3_KEY
+            'S3Key': get_layer_s3_key(key)
         },
-        CompatibleRuntimes=[
-            'nodejs10.x', 'nodejs12.x'
-        ],
+        CompatibleRuntimes=LAYERS[key]['runtimes'],
     )
     return response
 
 
-def deploy_screenshot_lambda(region, role_arn):
-    chromium_layer = deploy_chromium_layer(region)
-    logger.info("Deploying lambda function in {}".format(region))
+def deploy_function(key, region, role_arn):
+    layer_arns = []
+    for layer in FUNCTIONS[key]['layers']:
+        layer_arns.append(deploy_layer(layer, region)['LayerVersionArn'])
+    logger.info("Deploying {} function in {}".format(key.title(), region))
     aws_lambda = boto3.client('lambda', region_name=region)
     aws_lambda.create_function(
-        FunctionName=SCREENSHOT_LAMBDA_NAME,
-        Runtime='nodejs12.x',
+        FunctionName=get_function_name(key),
+        Runtime=FUNCTIONS[key]['runtime'],
         Role=role_arn,
-        Handler='index.handler',
+        Handler=FUNCTIONS[key]['handler'],
         Code={
             'S3Bucket': FLASHBULB_BUCKET_PREFIX + region,
-            'S3Key': SCREENSHOT_S3_KEY
+            'S3Key': get_function_s3_key(key)
         },
-        Description=str(SCREENSHOT_LAMBDA_VERSION),
-        Timeout=300,
-        MemorySize=2048,
+        Description=str(FUNCTIONS[key]['version']),
+        Timeout=FUNCTIONS[key]['timeout'],
+        MemorySize=FUNCTIONS[key]['memory'],
         Publish=True,
-        Layers=[
-            chromium_layer['LayerVersionArn']
-        ]
+        Layers=layer_arns
     )
 
 
 def deploy_region(region, role_arn):
-    screenshot_function = get_lambda_by_name(SCREENSHOT_LAMBDA_NAME, region)
-    if screenshot_function is not None:
-        logger.info("Region {} already deployed, skipping".format(region))
-    else:
-        deploy_screenshot_lambda(region, role_arn)
+    for key, function in FUNCTIONS.items():
+        result = get_function_by_key(key, region)
+        if result is None:
+            deploy_function(key, region, role_arn)
 
 
 def deploy(regions, role_arn):

@@ -30,15 +30,47 @@ class SemanticVersion:
     def __str__(self):
         return '{}.{}.{}'.format(self.major, self.minor, self.patch)
 
+
 FLASHBULB_BUCKET_PREFIX = 'flashbulb-'
 
-SCREENSHOT_LAMBDA_NAME = 'Flashbulb--Screenshot'
-SCREENSHOT_LAMBDA_VERSION = SemanticVersion('0.6.3')
-SCREENSHOT_S3_KEY = 'screenshot/{version}/function.zip'.format(
-    version=str(SCREENSHOT_LAMBDA_VERSION))
 
-CHROMIUM_LAYER_NAME = 'Flashbulb--HeadlessChromium'
-CHROMIUM_LAYER_VERSION = SemanticVersion('3.1.1')
-CHROMIUM_S3_KEY = 'chromium/{version}/layer.zip'.format(version=str(CHROMIUM_LAYER_VERSION))
+FUNCTIONS = {
+    "screenshot": {
+        "version": SemanticVersion('0.6.3'),
+        "layers": [
+            "chromium"
+        ],
+        "runtime": "nodejs12.x",
+        'handler': 'index.handler',
+        'timeout': 300,
+        'memory': 2048
+    },
+    "analyze": {
+        "version": SemanticVersion('0.0.1'),
+        "layers": [
+            "wappalyzer"
+        ],
+        "runtime": 'nodejs12.x',
+        "handler": 'index.handler',
+        'timeout': 60,
+        'memory': 500
+    }
+}
+
+
+LAYERS = {
+    "chromium": {
+        "version": SemanticVersion('3.1.1'),
+        "runtimes": [
+            'nodejs10.x', 'nodejs12.x'
+        ]
+    },
+    "wappalyzer": {
+        "version": SemanticVersion('6.0.13'),
+        "runtimes": [
+            'nodejs10.x', 'nodejs12.x'
+        ]
+    }
+}
 
 TEMP_FILES_DIRECTORY = os.path.join(os.getcwd(), '_temp')

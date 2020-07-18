@@ -9,8 +9,8 @@ import uuid
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
-from common.constants import SCREENSHOT_LAMBDA_NAME
-from common.utils import check_chromium_layer, check_credentials, check_screenshot_lambda, get_user_response, parse_regions
+from common.constants import FUNCTIONS, LAYERS
+from common.utils import check_credentials, check_function, check_layer, get_function_name, get_user_response, parse_regions
 from urllib.parse import urlparse, urlunparse
 import ipaddress
 
@@ -18,12 +18,16 @@ import ipaddress
 def check_regions(regions, bucket, skip_tests):
     for region in regions:
         logger.info("Checking region {} settings".format(region))
-        if not check_chromium_layer(region):
-            logger.error("Chromium layer in region {0} is out of date. Try running ./update with region {0}".format(region))
-            exit(-1)
-        if not check_screenshot_lambda(region):
-            logger.error("Screenshot function in region {0} is out of date. Try running ./update with region {0}".format(region))
-            exit(-1)
+        for key in LAYERS.keys():
+            if not check_layer(key, region):
+                logger.error(
+                    "{0} layer in region {1} is out of date. Try running ./update with region {1}".format(key.title(), region))
+                exit(-1)
+        for key in FUNCTIONS.keys():
+            if not check_function(key, region):
+                logger.error("{0} function in region {1} is out of date. Try running ./update with region {1}".format(key.title(), region))
+                exit(-1)
+        
         if not skip_tests:
             if not test_screenshot(region, bucket):
                 logger.error("Screenshot function does not appear to be working in {}. Check CloudWatch logs for more information.".format(region))
@@ -33,7 +37,7 @@ def check_regions(regions, bucket, skip_tests):
 def invoke_screenshot(region, url, bucket, prefix):
     aws_lambda = boto3.client('lambda', region_name=region)
     response = aws_lambda.invoke(
-        FunctionName=SCREENSHOT_LAMBDA_NAME,
+        FunctionName=get_function_name('screenshot'),
         InvocationType='Event',
         Payload=json.dumps({'url': url, 'bucket': bucket, 'prefix': prefix}).encode('utf-8')
     )
@@ -165,7 +169,7 @@ if __name__ == '__main__':
     hosts = list(set(hosts))
 
     if config.skip_tests:
-        logger.warn("Skipping active screenshot function tests.")
+        logger.warning("Skipping active screenshot function tests.")
     check_regions(config.regions, config.bucket, config.skip_tests)
     logger.info("Checks complete. Safety goggles on!")
     invoke_flashbulb(config.regions, hosts, config.bucket, config.prefix)

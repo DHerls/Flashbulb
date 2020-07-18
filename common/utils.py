@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 import logging
 import argparse
 
-from .constants import CHROMIUM_LAYER_NAME, CHROMIUM_LAYER_VERSION, SCREENSHOT_LAMBDA_NAME, SCREENSHOT_LAMBDA_VERSION, SemanticVersion
+from .constants import LAYERS, FUNCTIONS, SemanticVersion
 
 # Logging setup
 logger = logging.getLogger('flashbulb.utils')
@@ -83,10 +83,12 @@ def _list_lambda_functions(region):
         else:
             break
 
-def get_lambda_by_name(name, region):
+
+def get_function_by_key(key, region):
     """Return a lambda function with the given name or None if it does not exist."""
+    expected_name = get_function_name(key)
     for function in _list_lambda_functions(region):
-        if function['FunctionName'] == name:
+        if function['FunctionName'] == expected_name:
             return function
     return None
 
@@ -108,43 +110,60 @@ def _list_lambda_layers(region):
             break
 
 
-def get_layer_by_name(name, region):
+def get_layer_by_key(key, region):
     """Return the ARN of a lambda layer with the given name or None if it does not exist."""
+    expected_name = get_layer_name(key)
     for layer in _list_lambda_layers(region):
-        if layer['LayerName'] == name:
+        if layer['LayerName'] == expected_name:
             return layer
     return None
 
 
-def check_screenshot_lambda(region):
-    function = get_lambda_by_name(SCREENSHOT_LAMBDA_NAME, region)
+def check_function(key, region):
+    function = get_function_by_key(key, region)
     if function is None:
         logger.error(
-            "Cannot find Flashbulb lambda function in {region}. Try running ./deploy for region {region}".format(region=region))
+            "Cannot find {function} function in {region}. Try running ./deploy for region {region}".format(region=region, function=key.title()))
         exit(-1)
     version = SemanticVersion(function['Description'])
-    if version == SCREENSHOT_LAMBDA_VERSION:
+    if version == FUNCTIONS[key]['version']:
         return True
-    if version < SCREENSHOT_LAMBDA_VERSION:
+    if version < FUNCTIONS[key]['version']:
         return False
 
     logger.error(
-        "Flashbulb lambda in {region} has unknown version number. Update Flashbulb code and try again.".format(region=region))
+        "{function} function in {region} has unknown version number. Update Flashbulb code and try again.".format(region=region, function=key.title()))
     exit(-1)
 
 
-def check_chromium_layer(region):
-    layer = get_layer_by_name(CHROMIUM_LAYER_NAME, region)
+def check_layer(key, region):
+    layer = get_layer_by_key(key, region)
     if layer is None:
         logger.error(
-            "Cannot find chromium layer in {region}. Try running ./deploy for region {region}".format(region=region))
+            "Cannot find {layer} layer in {region}. Try running ./deploy for region {region}".format(region=region, layer=key.title()))
         exit(-1)
     version = SemanticVersion(layer['LatestMatchingVersion']['Description'])
-    if version == CHROMIUM_LAYER_VERSION:
+    if version == LAYERS[key]['version']:
         return True
-    if version < CHROMIUM_LAYER_VERSION:
+    if version < LAYERS[key]['version']:
         return False
-
+    
     logger.error(
-        "Chromium layer in {region} has unknown version number. Update Flashbulb code and try again.".format(region=region))
+        "{layer} layer in {region} has unknown version number. Update Flashbulb code and try again.".format(region=region, layer=key.title()))
     exit(-1)
+
+
+def get_layer_s3_key(key):
+    return "{}/{}/layer.zip".format(key, str(LAYERS[key]['version']))
+
+
+def get_layer_name(key):
+    return "Flashbulb--" + key.title()
+
+
+def get_function_s3_key(key):
+    return "{}/{}/function.zip".format(key, str(FUNCTIONS[key]['version']))
+
+
+def get_function_name(key):
+    return "Flashbulb--" + key.title()
