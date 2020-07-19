@@ -52,7 +52,7 @@ def deploy_region(region, role_arn):
             deploy_function(key, region, role_arn)
 
 
-def deploy_regions(regions, role_arn):
-    for region in regions:
-        deploy_region(region, role_arn)
-    logger.info('Done deploying Flashbulb across {} region{}'.format(len(regions), 's' if len(regions) > 1 else ''))
+def deploy_regions(options):
+    for region in options.regions:
+        deploy_region(region, options.role_arn)
+    logger.info('Done deploying Flashbulb across {} region{}'.format(len(options.regions), 's' if len(options.regions) > 1 else ''))

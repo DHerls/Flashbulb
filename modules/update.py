@@ -55,7 +55,8 @@ def update_region(region):
             update_function(key, region)
     
 
-def update_regions(regions):
-    for region in regions:
+def update_regions(options):
+    for region in options.regions:
         update_region(region)
+    logger.info("Update complete")
 
