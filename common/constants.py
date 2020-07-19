@@ -36,7 +36,7 @@ FLASHBULB_BUCKET_PREFIX = 'flashbulb-'
 
 FUNCTIONS = {
     "screenshot": {
-        "version": SemanticVersion('0.6.3'),
+        "version": SemanticVersion('0.7.1'),
         "layers": [
             "chromium"
         ],
@@ -46,7 +46,7 @@ FUNCTIONS = {
         'memory': 2048
     },
     "analyze": {
-        "version": SemanticVersion('0.0.1'),
+        "version": SemanticVersion('0.1.2'),
         "layers": [
             "wappalyzer"
         ],

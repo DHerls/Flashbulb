@@ -1,8 +1,8 @@
 import logging
 import argparse
 
-from common.constants import CHROMIUM_LAYER_NAME, CHROMIUM_LAYER_VERSION, CHROMIUM_S3_KEY, FLASHBULB_BUCKET_PREFIX, SCREENSHOT_LAMBDA_NAME, SCREENSHOT_LAMBDA_VERSION, SCREENSHOT_S3_KEY
-from common.utils import SemanticVersion, check_chromium_layer, check_credentials, check_screenshot_lambda, get_lambda_by_name, get_layer_by_name, parse_regions
+from common.constants import  FLASHBULB_BUCKET_PREFIX, FUNCTIONS, LAYERS
+from common.utils import SemanticVersion, check_credentials, check_function, check_layer, get_function_name, get_function_s3_key, get_layer_name, get_layer_s3_key, parse_regions
 import boto3
 
 # Logging setup
@@ -14,52 +14,50 @@ ch.setLevel(logging.INFO)
 logger.addHandler(ch)
 
 
-def update_chromium_layer(region):
-    logger.info("Updating Chromium layer in {}".format(region))
+def update_layer(key, region):
+    logger.info("Updating {} layer in {}".format(key.title(), region))
     aws_lambda = boto3.client('lambda', region_name=region)
     response = aws_lambda.publish_layer_version(
-        LayerName=CHROMIUM_LAYER_NAME,
-        Description=str(CHROMIUM_LAYER_VERSION),
+        LayerName=get_layer_name(key),
+        Description=str(LAYERS[key]['version']),
         Content={
             'S3Bucket': FLASHBULB_BUCKET_PREFIX + region,
-            'S3Key': CHROMIUM_S3_KEY
+            'S3Key': get_layer_s3_key(key)
         },
-        CompatibleRuntimes=[
-            'nodejs10.x', 'nodejs12.x'
-        ],
+        CompatibleRuntimes=LAYERS[key]['runtimes'],
     )
-    aws_lambda.update_function_configuration(
-        FunctionName=SCREENSHOT_LAMBDA_NAME,
-        Layers=[
-            response['LayerVersionArn']
-        ]
-    )
+    for func_key, function in FUNCTIONS.items():
+        if key in function['layers']:
+            aws_lambda.update_function_configuration(
+                FunctionName=get_function_name(func_key),
+                Layers=[
+                    response['LayerVersionArn']
+                ]
+            )
 
 
-def update_screenshot_lambda_code(region):
-    logger.info("Updating screenshot function in {}".format(region))
+def update_function(key, region):
+    logger.info("Updating {} function in {}".format(key.title(), region))
     aws_lambda = boto3.client('lambda', region_name=region)
     aws_lambda.update_function_code(
-        FunctionName=SCREENSHOT_LAMBDA_NAME,
+        FunctionName=get_function_name(key),
         S3Bucket=FLASHBULB_BUCKET_PREFIX + region,
-        S3Key=SCREENSHOT_S3_KEY
+        S3Key=get_function_s3_key(key)
     )
     aws_lambda.update_function_configuration(
-        FunctionName=SCREENSHOT_LAMBDA_NAME,
-        Description=str(SCREENSHOT_LAMBDA_VERSION)
+        FunctionName=get_function_name(key),
+        Description=str(FUNCTIONS[key]['version'])
     )
 
 
 def update_region(region):
-    chromium_current = check_chromium_layer(region)
-    screenshot_current = check_screenshot_lambda(region)
-    if chromium_current and screenshot_current:
-        logger.info("{region} already up to date".format(region=region))
-        return
-    if not chromium_current:
-        update_chromium_layer(region)
-    if not screenshot_current:
-        update_screenshot_lambda_code(region)
+    for key in LAYERS.keys():
+        if not check_layer(key, region):
+            update_layer(key, region)
+    
+    for key in FUNCTIONS.keys():
+        if not check_function(key, region):
+            update_function(key, region)
     
 
 def update(regions):

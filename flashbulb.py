@@ -88,13 +88,13 @@ def wait_for_completion(bucket, prefix, num_targets, silent=False):
 
 def test_screenshot(region, bucket):
     """Test screenshot lambda is working and can upload to the specified bucket"""
-    prefix = str(uuid.uuid4())
+    prefix = str(uuid.uuid4()) + "/"
     invoke_screenshot(region, 'https://example.com', bucket, prefix)
     result = wait_for_completion(bucket, prefix, 1, True)
     if result:
         aws_s3 = boto3.client('s3')
-        aws_s3.delete_object(Bucket=bucket, Key=prefix + '/https-example.com.png')
-        aws_s3.delete_object(Bucket=bucket, Key=prefix + '/https-example.com.json')
+        aws_s3.delete_object(Bucket=bucket, Key=prefix + 'https-example.com.png')
+        aws_s3.delete_object(Bucket=bucket, Key=prefix + 'https-example.com.json')
     return result
 
 
