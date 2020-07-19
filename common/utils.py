@@ -15,44 +15,6 @@ ch.setLevel(logging.INFO)
 logger.addHandler(ch)
 
 
-def check_credentials():
-    try:
-        iam = boto3.resource('iam')
-        current_user = iam.CurrentUser()
-        logger.debug('Flashbulb logged into AWS as {username}'.format(
-            username=current_user.user_name))
-    except ClientError as e:
-        logger.debug('Login error - HTTP {} - {}'.format(
-            e.response['ResponseMetadata']['HTTPStatusCode'], e.response['Error']['Message']))
-        logger.error("No valid AWS credentials found, exiting")
-        exit(-1)
-    except NoCredentialsError:
-        logger.error("No valid AWS credentials found, exiting")
-        exit(-1)
-
-
-def parse_regions(region_string):
-    """Return a list of valid regions from a comma-separated input string."""
-    aws_ec2 = boto3.client('ec2')
-    response = aws_ec2.describe_regions(
-        Filters=[
-            {
-                'Name': 'opt-in-status',
-                'Values': [
-                    'opted-in',
-                    'opt-in-not-required'
-                ]
-            }
-        ]
-    )
-    valid_regions = {r['RegionName'] for r in response['Regions']}
-    input_regions = {r.lower() for r in re.split(r',\s*', region_string)}
-    invalid_regions = input_regions - valid_regions
-    if invalid_regions:
-        raise argparse.ArgumentTypeError(
-            'The following regions are disabled for your account or do not exist: {}'.format(', '.join(invalid_regions)))
-    return sorted(list(input_regions))
-
 def get_user_response(message, options, default=None):
     """Return an option the user selected from a list of available options."""
     prompt = '{} > '.format(message)

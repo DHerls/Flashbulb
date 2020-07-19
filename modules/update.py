@@ -2,16 +2,11 @@ import logging
 import argparse
 
 from common.constants import  FLASHBULB_BUCKET_PREFIX, FUNCTIONS, LAYERS
-from common.utils import SemanticVersion, check_credentials, check_function, check_layer, get_function_name, get_function_s3_key, get_layer_name, get_layer_s3_key, parse_regions
+from common.utils import SemanticVersion,check_function, check_layer, get_function_name, get_function_s3_key, get_layer_name, get_layer_s3_key
 import boto3
 
-# Logging setup
-logger = logging.getLogger('flashbulb.deploy')
-logger.setLevel(logging.DEBUG)
 
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-logger.addHandler(ch)
+logger = logging.getLogger('flashbulb.update')
 
 
 def update_layer(key, region):
@@ -60,17 +55,7 @@ def update_region(region):
             update_function(key, region)
     
 
-def update(regions):
+def update_regions(regions):
     for region in regions:
         update_region(region)
 
-if __name__ == '__main__':
-    
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('regions', type=parse_regions, default="us-east-2",
-                        help="A comma-separated list of AWS regions to distribute Flashbulb jobs.")
-
-    check_credentials()
-    config = parser.parse_args()
-    update(config.regions)
