@@ -3,6 +3,7 @@ from common.utils import check_function, check_layer, get_function_name, get_use
 import boto3
 import json
 import ipaddress
+from modules.report import run_report
 from urllib.parse import urlparse, urlunparse
 import time
 import uuid
@@ -105,6 +106,7 @@ def invoke_flashbulb(options):
             options.regions[i % num_regions], url, options.bucket, options.prefix)
 
     wait_for_completion(options.bucket, options.prefix, len(hosts))
+    run_report(options.bucket, options.prefix)
 
 
 def get_object_count(bucket, prefix):

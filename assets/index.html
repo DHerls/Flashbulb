@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Flashbulb Results</title>
+        <style>
+            .template {
+                visibility: hidden;
+                display: none;
+            }
+            .search-result {
+                display: flex;
+                padding-bottom: 5px;
+                border-bottom: 1px solid black;
+            }
+            .search-result img.screenshot {
+                width: 45vw;
+                border: 1px solid black;
+            }
+
+            .info {
+                margin-left: 10px;
+                width: 45vw;
+                max-width: 45vw;
+                word-wrap: break-word;
+            }
+
+            #footer {
+                display: flex;
+                flex-direction: column;
+                justify-content: start;
+                align-items: center;
+                width: 100vw;
+                height: 40vh;
+            }
+
+            #footer p.count {
+                margin-bottom: 0;
+                width: 100%;
+                height: 50px;
+                font-size: 2em;
+                text-align: center;
+            }
+
+            #status-holder {
+                display: flex;
+            }
+
+            #search-input {
+                width: 300px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>
+            Flashbulb Results
+        </h1>
+        <div id="search-holder">
+            <label><strong>Search: </strong><input type="text" name="search" id='search-input' /></label>
+        </div>
+        <div id="status-holder">
+            <strong>Statuses: </strong>
+            <div id="statuses"></div>
+            <button type="button" id="select-all-status">Select All</button>
+            <button type="button" id="deselect-all-status">Deselect All</button>
+        </div>
+        <div id="technologies"></div>
+        <p><span class="count"></span> Scroll down to see more.</p>
+        <div id="searchTemplate" class="template">
+            <div class="search-result">
+                <div class="screenshot-container">
+                    <img class="screenshot" src="%screenshot%">
+                </div>
+                <div class="info">
+                    <h2 class="start-url">%startUrl%</h2>
+                    <p class="final-url"><strong>Final URL: </strong> %finalUrl%</p>
+                    <p class="status"><strong>Status: </strong> %status%</p>
+                    <p class="title"><strong>Title: </strong> %title%</p>
+                    <p class="ip-address"><strong>IP Address:</strong> %ipAddress%</p>
+                    <p><strong>Discovered Technologies:</strong></p>
+                    <ul class="technologies">
+                        %technologies%
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="techTemplate" class="template">
+            <li class="technology"><img src="https://raw.githubusercontent.com/AliasIO/wappalyzer/master/src/drivers/webextension/images/icons/%icon%" width="16" height="16"/>%name%</li>
+        </div>
+        <div id="search-results">
+
+        </div>
+        <div id="footer">
+            <p class="count"></p>
+            <p>Scroll down to see more</p>
+        </div>
+        <script>
+            const host = window.location.protocol + '//' + window.location.hostname + '/'
+            const base = window.location.href.replace('index.html', '');
+            const searchBox = document.getElementById('search-input')
+
+            let targetData = []
+            let filteredData = []
+            let statuses = []
+            let technologies = []
+
+            let totalDisplayed = 0;
+
+            const updateCounts = () => {
+                let counts = document.getElementsByClassName('count');
+                for (let i = 0; i < counts.length; i++){
+                    counts[i].innerHTML = `${totalDisplayed} out of ${filteredData.length} displayed`;
+                }
+            }
+
+            const renderTemplate = (elementId, data) => {
+                let template = document.getElementById(elementId).innerHTML;
+                for (const [key, value] of Object.entries(data)) {
+                    template = template.replace('%' + key + '%', value);
+                }
+                return template;
+            }
+
+            const renderTargets = (targets, replace) => {
+                let content = '';
+                for (let i = 0; i < targets.length; i++){
+                    let technologyTemplate = '';
+                    for (let j = 0; j < targets[i].technologies.length; j++){
+                        technologyTemplate += renderTemplate('techTemplate', targets[i].technologies[j]);
+                    }
+
+                    let templateData = {
+                        screenshot: host + targets[i]['screenshot'],
+                        startUrl: targets[i]['startUrl'],
+                        finalUrl: targets[i]['finalUrl'],
+                        status: targets[i]['status']['code'],
+                        title: targets[i]['title'],
+                        ipAddress: targets[i]['ipAddress']['ip'] + ":" + targets[i]['ipAddress']['port'],
+                        technologies: technologyTemplate
+                    }
+                    content += renderTemplate('searchTemplate', templateData);
+                }
+                if (replace) {
+                    document.getElementById('search-results').innerHTML = content;
+                } else {
+                    document.getElementById('search-results').innerHTML += content;
+                }
+            }
+
+            const search = () => {
+                const regex = new RegExp('.*' + searchBox.value + '.*');
+                const searchableFields = ['startUrl', 'finalUrl', 'title'];
+                filteredData = targetData.filter(target => {
+                    for (let i = 0; i < searchableFields.length; i++){
+                        if  (statuses.indexOf(target.status.code) == -1) {
+                            return false;
+                        }
+                        if (target[searchableFields[i]].match(regex)){
+                            return true;
+                        }
+                    }
+
+                    //Custom handling for technologies
+                    for (let i = 0; i < target.technologies.length; i++){
+                        if (target.technologies[i].name.match(regex)){
+                            return true;
+                        }
+                    }
+                    return false;
+                })
+                renderTargets(filteredData.slice(0, 10), true);
+                totalDisplayed = filteredData.length > 10 ? 10 : filteredData.length;
+                updateCounts();
+            }
+
+            const loadMore = len => {
+                let newTarget = totalDisplayed + len > filteredData.length ? filteredData.length : totalDisplayed + len;
+                renderTargets(filteredData.slice(totalDisplayed, newTarget), false);
+                totalDisplayed = newTarget;
+                updateCounts();
+            }
+
+            const configure = () => {
+                targetData.forEach(target => {
+                    if (statuses.indexOf(target.status.code) == -1){
+                        statuses.push(target.status.code)
+                    }
+                })
+
+                statuses = statuses.sort();
+                statusHolder = document.getElementById('statuses');
+                statusBoxes = statuses.map(status => {
+                    return `<label><input type="checkbox" checked="checked" data-status=${status} class='status-box'>${status}</label>`;
+                })
+                statusHolder.innerHTML = statusBoxes.join('');
+                for (let element of document.getElementsByClassName('status-box')) {
+                    element.addEventListener('change', event => {
+                        if (event.originalTarget.checked){
+                            statuses.push(parseInt(event.originalTarget.dataset.status));
+                        } else {
+                            statuses = statuses.filter(status => status != parseInt(event.originalTarget.dataset.status) );
+                        }
+                        search();
+                    })
+                }
+            }
+
+            fetch(base + 'combined.json')
+                .then((response) => response.json())
+                .then(data => {
+                    targetData = data.targets.sort((a, b) => a.startUrl > b.startUrl ? 1 : -1);
+                    configure();
+                    search();
+                });
+            
+            document.getElementById('search-input').addEventListener('keyup', (event) => {
+                search();
+            });
+
+            window.onscroll = function (ev) {
+                if ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight) {
+                    loadMore(10);
+                }
+            };
+
+            document.getElementById('select-all-status').addEventListener('click', event => {
+                for (let element of document.getElementsByClassName('status-box')) {
+                    if (!element.checked){
+                        // So a change event is fired and the filter is automatically run
+                        element.click();
+                    }
+                }
+            })
+
+            document.getElementById('deselect-all-status').addEventListener('click', event => {
+                for (let element of document.getElementsByClassName('status-box')) {
+                    if (element.checked) {
+                        // So a change event is fired and the filter is automatically run
+                        element.click();
+                    }
+                }
+            })
+        </script>
+    </body>
+</html>

@@ -46,7 +46,7 @@ FUNCTIONS = {
         'memory': 2048
     },
     "analyze": {
-        "version": SemanticVersion('0.1.2'),
+        "version": SemanticVersion('0.1.3'),
         "layers": [
             "wappalyzer"
         ],

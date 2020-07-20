@@ -62,8 +62,8 @@ exports.handler = async (event, context, callback) => {
       finalUrl: event.finalUrl,
       status: event.status,
       title: event.title,
-      content: event.content,
       ipAddress: event.ipAddress,
+      screenshot: prefix + safeUrl + '.png',
       technologies: results,
     };
 
