@@ -15,7 +15,7 @@ def get_json_location(bucket, prefix):
     return os.path.join(TEMP_FILES_DIRECTORY, bucket, prefix)
 
 def combine_json(bucket, prefix):
-    print("Downloading reports")
+    logger.info("Analyzing reports")
     aws_s3 = boto3.client('s3')
     paginator = aws_s3.get_paginator('list_objects_v2')
     page_iterator = paginator.paginate(

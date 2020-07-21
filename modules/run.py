@@ -128,7 +128,7 @@ def get_object_count(bucket, prefix):
 
 
 def wait_for_completion(bucket, prefix, num_targets, silent=False):
-    timeout = 120
+    timeout = 180
     start = time.time()
     while time.time() - start < timeout:
         total_objects = get_object_count(bucket, prefix)
@@ -142,10 +142,11 @@ def wait_for_completion(bucket, prefix, num_targets, silent=False):
         else:
             if not silent:
                 logger.info("All targets accounted for")
+                if errors:
+                    logger.info(f'Error reports are available in {bucket}/{prefix}.')
             return True
     if not silent:
-        logger.error(
-            "Timeout while waiting for target completion. Some may have failed.")
+        logger.error("Timeout while waiting for target completion. Some may have failed.")
     return False
 
 
