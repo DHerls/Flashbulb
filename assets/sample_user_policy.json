@@ -1,0 +1,66 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "GlobalPerms",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:ListFunctions",
+                "ec2:DescribeRegions",
+                "lambda:ListLayers"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "S3Perms",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::<your-bucket-here>/*",
+                "arn:aws:s3:::<your-bucket-here>"
+            ]
+        },
+        {
+            "Sid": "IAMPerms",
+            "Effect": "Allow",
+            "Action": [
+                "iam:PassRole"
+            ],
+            "Resource": [
+                "<lambda-role-arn-here>"
+            ]
+        },
+        {
+            "Sid": "LambdaPerms",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:UpdateFunctionCode",
+                "lambda:InvokeFunction",
+                "lambda:GetLayerVersion",
+                "lambda:PublishLayerVersion",
+                "lambda:UpdateFunctionConfiguration",
+                "lambda:PublishVersion"
+            ],
+            "Resource": [
+                "arn:aws:lambda:*:*:function:Flashbulb--Analyze",
+                "arn:aws:lambda:*:*:function:Flashbulb--Screenshot",
+                "arn:aws:lambda:*:*:layer:Flashbulb--Chromium",
+                "arn:aws:lambda:*:*:layer:Flashbulb--Wappalyzer",
+                "arn:aws:lambda:*:*:layer:Flashbulb--Chromium:*",
+                "arn:aws:lambda:*:*:layer:Flashbulb--Wappalyzer:*"
+            ]
+        },
+        {
+            "Sid": "ImportLambdaCode",
+            "Effect": "Allow",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::flashbulb-*"
+        }
+    ]
+}

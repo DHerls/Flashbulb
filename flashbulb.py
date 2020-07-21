@@ -46,10 +46,8 @@ def parse_lambda_execution_role(user_input):
 
 def check_credentials():
     try:
-        iam = boto3.resource('iam')
-        current_user = iam.CurrentUser()
-        logger.debug('Flashbulb logged into AWS as {username}'.format(
-            username=current_user.user_name))
+        aws_lambda = boto3.client('lambda')
+        aws_lambda.list_functions()
     except ClientError as e:
         logger.debug('Login error - HTTP {} - {}'.format(
             e.response['ResponseMetadata']['HTTPStatusCode'], e.response['Error']['Message']))
