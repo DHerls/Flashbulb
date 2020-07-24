@@ -1,6 +1,6 @@
 
 import boto3
-from common.constants import TEMP_FILES_DIRECTORY
+from common.constants import FLASHBULB_DIR
 from pathlib import Path
 import os
 import glob
@@ -11,9 +11,6 @@ import logging
 
 logger = logging.getLogger('flashbulb.report')
 
-def get_json_location(bucket, prefix):
-    return os.path.join(TEMP_FILES_DIRECTORY, bucket, prefix)
-
 def combine_json(bucket, prefix):
     logger.info("Analyzing reports")
     aws_s3 = boto3.client('s3')
@@ -22,8 +19,6 @@ def combine_json(bucket, prefix):
         Bucket=bucket,
         Prefix=prefix
     )
-    dest = get_json_location(bucket, prefix)
-    Path(dest).mkdir(parents=True, exist_ok=True)
 
     data = []
     buffer = b'{"targets":['
@@ -44,8 +39,7 @@ def combine_json(bucket, prefix):
 
 
 def upload_index(bucket, prefix):
-    flashbulb_dir = pathlib.Path(__file__).parent.parent.absolute()
-    index_file = flashbulb_dir.joinpath('assets').joinpath('index.html')
+    index_file = FLASHBULB_DIR.joinpath('assets').joinpath('index.html')
     aws_s3 = boto3.client('s3')
     with open(index_file, encoding='utf-8') as f:
         aws_s3.put_object(Bucket=bucket, Key=prefix + 'index.html', Body=f.read(), ContentType='text/html')

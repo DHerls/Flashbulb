@@ -1,4 +1,4 @@
-from common.constants import FUNCTIONS, FLASHBULB_BUCKET_PREFIX
+from common.constants import FUNCTIONS, FLASHBULB_DIR, FLASHBULB_BUCKET_PREFIX
 from common.utils import check_function, get_function_s3_key
 import pathlib
 from zipfile import ZipFile
@@ -15,8 +15,8 @@ def stage_function(key):
     except ClientError:
         pass
     
-    flashbulb_dir = pathlib.Path(__file__).parent.parent.absolute()
-    screenshot_dir = flashbulb_dir.joinpath('lambdas').joinpath(key)
+    
+    screenshot_dir = FLASHBULB_DIR.joinpath('lambdas').joinpath(key)
     zip_path = screenshot_dir.joinpath('function.zip')
 
     with ZipFile(zip_path, 'w') as myzip:

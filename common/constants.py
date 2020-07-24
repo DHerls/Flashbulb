@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 
 class SemanticVersion:
@@ -73,4 +74,4 @@ LAYERS = {
     }
 }
 
-TEMP_FILES_DIRECTORY = os.path.join(os.getcwd(), '_temp')
+FLASHBULB_DIR = pathlib.Path(__file__).parent.parent.absolute()
