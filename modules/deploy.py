@@ -1,6 +1,6 @@
 import argparse
 import logging
-from common.constants import FUNCTIONS, LAYERS, FLASHBULB_DIR, FLASHBULB_BUCKET_PREFIX
+from common.constants import ENTITIES, FLASHBULB_DIR, FLASHBULB_BUCKET_PREFIX
 from common.utils import get_function_by_key, get_function_name, get_function_s3_key, get_layer_name, get_layer_s3_key
 import re
 import boto3
@@ -31,19 +31,19 @@ async def deploy_region(region, role_arn):
         Parameters=[
             {
                 'ParameterKey': 'ChromiumVersion',
-                'ParameterValue': str(LAYERS['chromium']['version']),
+                'ParameterValue': str(ENTITIES['chromium']['version']),
             },
             {
                 'ParameterKey': 'WappalyzerVersion',
-                'ParameterValue': str(LAYERS['wappalyzer']['version']),
+                'ParameterValue': str(ENTITIES['wappalyzer']['version']),
             },
             {
                 'ParameterKey': 'ScreenshotVersion',
-                'ParameterValue': str(FUNCTIONS['screenshot']['version']),
+                'ParameterValue': str(ENTITIES['screenshot']['version']),
             },
             {
                 'ParameterKey': 'AnalyzeVersion',
-                'ParameterValue': str(FUNCTIONS['analyze']['version']),
+                'ParameterValue': str(ENTITIES['analyze']['version']),
             },
             {
                 'ParameterKey': 'LambdaRoleArn',

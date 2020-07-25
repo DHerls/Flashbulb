@@ -1,62 +1,101 @@
 import logging
 import argparse
 
-from common.constants import  FLASHBULB_BUCKET_PREFIX, FUNCTIONS, LAYERS
+from common.constants import  FLASHBULB_DIR, ENTITIES
 from common.utils import SemanticVersion,check_function, check_layer, get_function_name, get_function_s3_key, get_layer_name, get_layer_s3_key
 import boto3
+import asyncio
+from botocore.exceptions import ClientError
 
 
 logger = logging.getLogger('flashbulb.update')
 
 
-def update_layer(key, region):
-    logger.info("Updating {} layer in {}".format(key.title(), region))
-    aws_lambda = boto3.client('lambda', region_name=region)
-    response = aws_lambda.publish_layer_version(
-        LayerName=get_layer_name(key),
-        Description=str(LAYERS[key]['version']),
-        Content={
-            'S3Bucket': FLASHBULB_BUCKET_PREFIX + region,
-            'S3Key': get_layer_s3_key(key)
-        },
-        CompatibleRuntimes=LAYERS[key]['runtimes'],
-    )
-    for func_key, function in FUNCTIONS.items():
-        if key in function['layers']:
-            aws_lambda.update_function_configuration(
-                FunctionName=get_function_name(func_key),
-                Layers=[
-                    response['LayerVersionArn']
-                ]
-            )
+async def update_region(region):
+    aws_cloudformation = boto3.client('cloudformation', region_name=region)
+    try:
+        stack = aws_cloudformation.describe_stacks(StackName='Flashbulb')['Stacks'][0]
+        needs_update = False
+        role_arn = None
+        for p in stack['Parameters']:
+            if p['ParameterKey'] == 'LambdaRoleArn':
+                role_arn = p['ParameterValue']
+                continue
+            if 'Version' not in p['ParameterKey']:
+                continue
+            key = p['ParameterKey'].replace('Version', '').lower()
+            aws_version = SemanticVersion(p['ParameterValue'])
+            if aws_version < ENTITIES[key]['version']:
+                needs_update = True
+                # Don't break because we need to find LambdaRoleArn
+            elif aws_version > ENTITIES[key]['version']:
+                logger.error("Flashbulb does not recognize deployed version. Please update Flashbulb code.")
+        if not needs_update:
+            logger.info("Flashbulb in {} is already up to date".format(region))
+            return
+        
+        logger.info("Updating Flashbulb in {}".format(region))
+        template_path = FLASHBULB_DIR.joinpath('assets').joinpath('cloudformation_template.json')
+        with open(template_path, 'r') as f:
+            template_body = f.read()
+
+        response = aws_cloudformation.update_stack(
+            StackName='Flashbulb',
+            TemplateBody=template_body,
+            UsePreviousTemplate=False,
+            Parameters=[
+                {
+                    'ParameterKey': 'ChromiumVersion',
+                    'ParameterValue': str(ENTITIES['chromium']['version']),
+                },
+                {
+                    'ParameterKey': 'WappalyzerVersion',
+                    'ParameterValue': str(ENTITIES['wappalyzer']['version']),
+                },
+                {
+                    'ParameterKey': 'ScreenshotVersion',
+                    'ParameterValue': str(ENTITIES['screenshot']['version']),
+                },
+                {
+                    'ParameterKey': 'AnalyzeVersion',
+                    'ParameterValue': str(ENTITIES['analyze']['version']),
+                },
+                {
+                    'ParameterKey': 'LambdaRoleArn',
+                    'ParameterValue': role_arn,
+                },
+            ],
+            ResourceTypes=[
+                'AWS::Lambda::*',
+            ]
+        )
+
+        stack_status = 'UPDATE_IN_PROGRESS'
+        while stack_status == 'UPDATE_IN_PROGRESS':
+            await asyncio.sleep(5)
+            response = aws_cloudformation.describe_stacks(StackName='Flashbulb')
+            stack_status = response['Stacks'][0]['StackStatus']
+        
+        if stack_status == 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS' or stack_status == 'UPDATE_COMPLETE':
+            logger.info("Successfully updated Flashbulb in {}".format(region))
+        else:
+            logger.error("Error updating Flashbulb in {}, status {}".format(region, stack_status))
+            
+    except ClientError:
+        # Stack doesn't exist
+        logger.warning("Flashbulb not found in {}. Try deploying instead.".format(region))
+        return
 
 
-def update_function(key, region):
-    logger.info("Updating {} function in {}".format(key.title(), region))
-    aws_lambda = boto3.client('lambda', region_name=region)
-    aws_lambda.update_function_code(
-        FunctionName=get_function_name(key),
-        S3Bucket=FLASHBULB_BUCKET_PREFIX + region,
-        S3Key=get_function_s3_key(key)
-    )
-    aws_lambda.update_function_configuration(
-        FunctionName=get_function_name(key),
-        Description=str(FUNCTIONS[key]['version'])
-    )
+async def update_async(options):
+    tasks = []
+    for region in options.regions:
+        tasks.append(asyncio.create_task(update_region(region)))
+    for task in tasks:
+        await task
+    logger.info('Done updating Flashbulb across {} region{}'.format(
+        len(options.regions), 's' if len(options.regions) > 1 else ''))
 
-
-def update_region(region):
-    for key in LAYERS.keys():
-        if not check_layer(key, region):
-            update_layer(key, region)
-    
-    for key in FUNCTIONS.keys():
-        if not check_function(key, region):
-            update_function(key, region)
-    
 
 def update_regions(options):
-    for region in options.regions:
-        update_region(region)
-    logger.info("Update complete")
-
+    asyncio.run(update_async(options))

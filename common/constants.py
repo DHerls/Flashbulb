@@ -34,43 +34,28 @@ class SemanticVersion:
 
 FLASHBULB_BUCKET_PREFIX = 'flashbulb-'
 
-
-FUNCTIONS = {
+ENTITIES = {
     "screenshot": {
         "version": SemanticVersion('0.7.1'),
         "layers": [
             "chromium"
         ],
-        "runtime": "nodejs12.x",
-        'handler': 'index.handler',
-        'timeout': 300,
-        'memory': 2048
+        "type": "function"
     },
     "analyze": {
         "version": SemanticVersion('0.1.3'),
         "layers": [
             "wappalyzer"
         ],
-        "runtime": 'nodejs12.x',
-        "handler": 'index.handler',
-        'timeout': 60,
-        'memory': 500
-    }
-}
-
-
-LAYERS = {
+        "type": "function"
+    },
     "chromium": {
         "version": SemanticVersion('3.1.1'),
-        "runtimes": [
-            'nodejs10.x', 'nodejs12.x'
-        ]
+        "type": "layer"
     },
     "wappalyzer": {
         "version": SemanticVersion('6.0.13'),
-        "runtimes": [
-            'nodejs10.x', 'nodejs12.x'
-        ]
+        "type": "layer"
     }
 }
 

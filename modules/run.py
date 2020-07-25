@@ -1,4 +1,4 @@
-from common.constants import FUNCTIONS, LAYERS
+from common.constants import ENTITIES
 from common.utils import check_function, check_layer, get_function_name, get_user_response
 import boto3
 import json
@@ -47,15 +47,14 @@ def parse_host(line, http_and_https):
 def check_regions(regions, bucket, skip_tests):
     for region in regions:
         logger.info("Checking region {} settings".format(region))
-        for key in LAYERS.keys():
-            if not check_layer(key, region):
-                logger.error(
-                    "{0} layer in region {1} is out of date. Try running ./update with region {1}".format(key.title(), region))
-                exit(-1)
-        for key in FUNCTIONS.keys():
-            if not check_function(key, region):
+        for key, entity in ENTITIES.items():
+            if entity['type'] == 'function' and not check_function(key, region):
                 logger.error(
                     "{0} function in region {1} is out of date. Try running ./update with region {1}".format(key.title(), region))
+                exit(-1)
+            elif entity['type'] == 'layer' and not not check_layer(key, region):
+                logger.error(
+                    "{0} layer in region {1} is out of date. Try running ./update with region {1}".format(key.title(), region))
                 exit(-1)
 
         if not skip_tests:

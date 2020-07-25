@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 import logging
 import argparse
 
-from .constants import LAYERS, FUNCTIONS, SemanticVersion
+from .constants import ENTITIES, SemanticVersion
 
 # Logging setup
 logger = logging.getLogger('flashbulb.utils')
@@ -88,9 +88,9 @@ def check_function(key, region):
             "Cannot find {function} function in {region}. Try running ./deploy for region {region}".format(region=region, function=key.title()))
         exit(-1)
     version = SemanticVersion(function['Description'])
-    if version == FUNCTIONS[key]['version']:
+    if version == ENTITIES[key]['version']:
         return True
-    if version < FUNCTIONS[key]['version']:
+    if version < ENTITIES[key]['version']:
         return False
 
     logger.error(
@@ -105,9 +105,9 @@ def check_layer(key, region):
             "Cannot find {layer} layer in {region}. Try running ./deploy for region {region}".format(region=region, layer=key.title()))
         exit(-1)
     version = SemanticVersion(layer['LatestMatchingVersion']['Description'])
-    if version == LAYERS[key]['version']:
+    if version == ENTITIES[key]['version']:
         return True
-    if version < LAYERS[key]['version']:
+    if version < ENTITIES[key]['version']:
         return False
     
     logger.error(
@@ -116,7 +116,7 @@ def check_layer(key, region):
 
 
 def get_layer_s3_key(key):
-    return "{}/{}/layer.zip".format(key, str(LAYERS[key]['version']))
+    return "{}/{}/layer.zip".format(key, str(ENTITIES[key]['version']))
 
 
 def get_layer_name(key):
@@ -124,7 +124,7 @@ def get_layer_name(key):
 
 
 def get_function_s3_key(key):
-    return "{}/{}/function.zip".format(key, str(FUNCTIONS[key]['version']))
+    return "{}/{}/function.zip".format(key, str(ENTITIES[key]['version']))
 
 
 def get_function_name(key):
