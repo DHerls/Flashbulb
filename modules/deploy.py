@@ -6,14 +6,19 @@ import re
 import boto3
 import time
 import asyncio
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger('flashbulb.deploy')
 
 async def deploy_region(region, role_arn):
     aws_cloudformation = boto3.client('cloudformation', region_name=region)
-    if len(aws_cloudformation.describe_stacks(StackName='Flashbulb')['Stacks']) != 0:
-        logger.warning("Flashbulb already deployed in {}, try updating instead.".format(region))
-        return
+    try:
+        if len(aws_cloudformation.describe_stacks(StackName='Flashbulb')['Stacks']) != 0:
+            logger.warning("Flashbulb already deployed in {}, try updating instead.".format(region))
+            return
+    except ClientError:
+        # Stack doesn't exist
+        pass
 
     logger.info("Deploying Flashbulb in {}".format(region))
     template_path = FLASHBULB_DIR.joinpath('assets').joinpath('cloudformation_template.json')
