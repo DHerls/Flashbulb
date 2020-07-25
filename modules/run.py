@@ -8,6 +8,7 @@ from urllib.parse import urlparse, urlunparse
 import time
 import uuid
 import logging
+import asyncio
 
 
 logger = logging.getLogger('flashbulb.run')
@@ -42,6 +43,7 @@ def parse_host(line, http_and_https):
 
     return hosts
 
+
 def check_regions(regions, bucket, skip_tests):
     for region in regions:
         logger.info("Checking region {} settings".format(region))
@@ -63,7 +65,7 @@ def check_regions(regions, bucket, skip_tests):
                 exit(-1)
 
 
-def invoke_screenshot(region, url, bucket, prefix):
+async def invoke_screenshot(region, url, bucket, prefix):
     aws_lambda = boto3.client('lambda', region_name=region)
     response = aws_lambda.invoke(
         FunctionName=get_function_name('screenshot'),
@@ -71,6 +73,18 @@ def invoke_screenshot(region, url, bucket, prefix):
         Payload=json.dumps({'url': url, 'bucket': bucket,
                             'prefix': prefix}).encode('utf-8')
     )
+
+
+async def invoke_async(hosts, options):
+    num_regions = len(options.regions)
+    tasks = []
+    for i, url in enumerate(hosts):
+        tasks.append(asyncio.create_task(
+            invoke_screenshot(
+                options.regions[i % num_regions], url, options.bucket, options.prefix)
+        ))
+    for t in tasks:
+        await t
 
 
 def invoke_flashbulb(options):
@@ -100,10 +114,7 @@ def invoke_flashbulb(options):
     check_regions(options.regions, options.bucket, options.skip_tests)
     logger.info("Checks complete. Safety goggles on!")
 
-    num_regions = len(options.regions)
-    for i, url in enumerate(hosts):
-        invoke_screenshot(
-            options.regions[i % num_regions], url, options.bucket, options.prefix)
+    asyncio.run(invoke_async(hosts, options))
 
     wait_for_completion(options.bucket, options.prefix, len(hosts))
     run_report(options.bucket, options.prefix)
@@ -153,7 +164,7 @@ def wait_for_completion(bucket, prefix, num_targets, silent=False):
 def test_screenshot(region, bucket):
     """Test screenshot lambda is working and can upload to the specified bucket"""
     prefix = str(uuid.uuid4()) + "/"
-    invoke_screenshot(region, 'https://example.com', bucket, prefix)
+    asyncio.run(invoke_screenshot(region, 'https://example.com', bucket, prefix))
     result = wait_for_completion(bucket, prefix, 1, True)
     if result:
         aws_s3 = boto3.client('s3')
