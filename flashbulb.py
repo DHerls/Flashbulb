@@ -4,6 +4,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from modules.deploy import deploy_regions
 from modules.run import invoke_flashbulb
 from modules.update import update_regions
+from modules.destroy import destroy
 import re
 import logging
 
@@ -76,12 +77,16 @@ if __name__ == '__main__':
     
     deploy_parser = subparsers.add_parser('deploy', help='Deploy Flashbulb to your AWS instance in specified regions')
     deploy_parser.add_argument('role_arn', type=parse_lambda_execution_role, help='Lambda execution role ARN to assign to Flashbulb lambda functions')
-    deploy_parser.add_argument('regions', type=parse_regions, default="us-east-2", help="A comma-separated list of AWS regions to distribute Flashbulb jobs.")
+    deploy_parser.add_argument('regions', type=parse_regions, default="us-east-2", help="A comma-separated list of AWS regions")
     deploy_parser.set_defaults(func=deploy_regions)
 
     update_parser = subparsers.add_parser('update', help='Update Flashbulb functions deployed to your AWS instance')
-    update_parser.add_argument('regions', type=parse_regions, default="us-east-2", help="A comma-separated list of AWS regions to distribute Flashbulb jobs.")
+    update_parser.add_argument('regions', type=parse_regions, default="us-east-2", help="A comma-separated list of AWS regions")
     update_parser.set_defaults(func=update_regions)
+
+    destroy_parser = subparsers.add_parser('destroy', help='Destroy Flashbulb functions deployed to your AWS instance')
+    destroy_parser.add_argument('regions', type=parse_regions, default="us-east-2", help="A comma-separated list of AWS regions")
+    destroy_parser.set_defaults(func=destroy)
     
     check_credentials()
     config = parser.parse_args()
