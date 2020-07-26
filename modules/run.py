@@ -52,7 +52,7 @@ def check_regions(regions, bucket, skip_tests):
                 logger.error(
                     "{0} function in region {1} is out of date. Try running ./update with region {1}".format(key.title(), region))
                 exit(-1)
-            elif entity['type'] == 'layer' and not not check_layer(key, region):
+            elif entity['type'] == 'layer' and not check_layer(key, region):
                 logger.error(
                     "{0} layer in region {1} is out of date. Try running ./update with region {1}".format(key.title(), region))
                 exit(-1)

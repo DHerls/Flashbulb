@@ -34,6 +34,14 @@ const processCookies = (cookieList) => {
   return cookieDict;
 };
 
+const hasUserInput = (content) => {
+  return content.search(/<input[^>]*?type=("|')(?!hidden)[^>]*?>/) !== -1;
+}
+
+const hasPasswordInput = (content) => {
+  return content.search(/<input[^>]*?type=("|')password("|')[^>]*?>/) !== -1;
+}
+
 exports.handler = async (event, context, callback) => {
   const safeUrl = event.startUrl.replace("://", "-").replace(/\//g, "__");
   const prefix = event.prefix || "";
@@ -57,10 +65,19 @@ exports.handler = async (event, context, callback) => {
 
     const results = Wappalyzer.resolve(detections);
 
+    let category = 'No inputs'
+    if (hasUserInput(event.content)){
+      category = 'User input'
+    }
+    if (hasPasswordInput(event.content)) {
+      category = "Password input";
+    }
+
     const pageInfo = {
       startUrl: event.startUrl,
       finalUrl: event.finalUrl,
       status: event.status,
+      category: category,
       title: event.title,
       ipAddress: event.ipAddress,
       screenshot: prefix + safeUrl + '.png',

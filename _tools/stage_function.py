@@ -1,4 +1,4 @@
-from common.constants import FUNCTIONS, FLASHBULB_DIR, FLASHBULB_BUCKET_PREFIX
+from common.constants import FLASHBULB_DIR, FLASHBULB_BUCKET_PREFIX
 from common.utils import check_function, get_function_s3_key
 import pathlib
 from zipfile import ZipFile

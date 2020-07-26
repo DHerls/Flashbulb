@@ -39,7 +39,7 @@
                 text-align: center;
             }
 
-            #status-holder {
+            #status-holder, #category-holder {
                 display: flex;
             }
 
@@ -61,6 +61,12 @@
             <button type="button" id="select-all-status">Select All</button>
             <button type="button" id="deselect-all-status">Deselect All</button>
         </div>
+        <div id="category-holder">
+            <strong>Categories: </strong>
+            <div id="categories"></div>
+            <button type="button" id="select-all-category">Select All</button>
+            <button type="button" id="deselect-all-category">Deselect All</button>
+        </div>
         <div id="technologies"></div>
         <p><span class="count"></span> Scroll down to see more.</p>
         <div id="searchTemplate" class="template">
@@ -74,6 +80,7 @@
                     <p class="status"><strong>Status: </strong> %status%</p>
                     <p class="title"><strong>Title: </strong> %title%</p>
                     <p class="ip-address"><strong>IP Address:</strong> %ipAddress%</p>
+                    <p class="category"><strong>Category:</strong> %category%</p>
                     <p><strong>Discovered Technologies:</strong></p>
                     <ul class="technologies">
                         %technologies%
@@ -99,6 +106,7 @@
             let targetData = []
             let filteredData = []
             let statuses = []
+            let categories = []
             let technologies = []
 
             let totalDisplayed = 0;
@@ -133,6 +141,7 @@
                         status: targets[i]['status']['code'],
                         title: targets[i]['title'],
                         ipAddress: targets[i]['ipAddress']['ip'] + ":" + targets[i]['ipAddress']['port'],
+                        category: targets[i]['category'],
                         technologies: technologyTemplate
                     }
                     content += renderTemplate('searchTemplate', templateData);
@@ -150,6 +159,9 @@
                 filteredData = targetData.filter(target => {
                     for (let i = 0; i < searchableFields.length; i++){
                         if  (statuses.indexOf(target.status.code) == -1) {
+                            return false;
+                        }
+                        if (categories.indexOf(target.category) == -1) {
                             return false;
                         }
                         if (target[searchableFields[i]].match(regex)){
@@ -182,6 +194,9 @@
                     if (statuses.indexOf(target.status.code) == -1){
                         statuses.push(target.status.code)
                     }
+                    if (categories.indexOf(target.category) == -1) {
+                        categories.push(target.category)
+                    }
                 })
 
                 statuses = statuses.sort();
@@ -196,6 +211,23 @@
                             statuses.push(parseInt(event.originalTarget.dataset.status));
                         } else {
                             statuses = statuses.filter(status => status != parseInt(event.originalTarget.dataset.status) );
+                        }
+                        search();
+                    })
+                }
+
+                categories = categories.sort();
+                categoryHolder = document.getElementById('categories');
+                categoryBoxes = categories.map(category => {
+                    return `<label><input type="checkbox" checked="checked" data-category="${category}"" class='category-box'>${category}</label>`;
+                })
+                categoryHolder.innerHTML = categoryBoxes.join('');
+                for (let element of document.getElementsByClassName('category-box')) {
+                    element.addEventListener('change', event => {
+                        if (event.originalTarget.checked) {
+                            categories.push(event.originalTarget.dataset.category);
+                        } else {
+                            categories = categories.filter(status => status != event.originalTarget.dataset.category);
                         }
                         search();
                     })
@@ -231,6 +263,25 @@
 
             document.getElementById('deselect-all-status').addEventListener('click', event => {
                 for (let element of document.getElementsByClassName('status-box')) {
+                    if (element.checked) {
+                        // So a change event is fired and the filter is automatically run
+                        element.click();
+                    }
+                }
+            })
+
+
+            document.getElementById('select-all-category').addEventListener('click', event => {
+                for (let element of document.getElementsByClassName('category-box')) {
+                    if (!element.checked){
+                        // So a change event is fired and the filter is automatically run
+                        element.click();
+                    }
+                }
+            })
+
+            document.getElementById('deselect-all-category').addEventListener('click', event => {
+                for (let element of document.getElementsByClassName('category-box')) {
                     if (element.checked) {
                         // So a change event is fired and the filter is automatically run
                         element.click();

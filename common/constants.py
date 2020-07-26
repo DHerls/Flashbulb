@@ -43,7 +43,7 @@ ENTITIES = {
         "type": "function"
     },
     "analyze": {
-        "version": SemanticVersion('0.1.3'),
+        "version": SemanticVersion('0.2.4'),
         "layers": [
             "wappalyzer"
         ],
