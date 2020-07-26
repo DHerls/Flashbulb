@@ -39,10 +39,13 @@
             "Sid": "LambdaPerms",
             "Effect": "Allow",
             "Action": [
+                "lambda:GetFunction",
+                "lambda:DeleteFunction",
                 "lambda:CreateFunction",
                 "lambda:UpdateFunctionCode",
                 "lambda:InvokeFunction",
                 "lambda:GetLayerVersion",
+                "lambda:DeleteLayerVersion",
                 "lambda:PublishLayerVersion",
                 "lambda:UpdateFunctionConfiguration",
                 "lambda:PublishVersion"
@@ -54,6 +57,18 @@
                 "arn:aws:lambda:*:*:layer:Flashbulb--Wappalyzer",
                 "arn:aws:lambda:*:*:layer:Flashbulb--Chromium:*",
                 "arn:aws:lambda:*:*:layer:Flashbulb--Wappalyzer:*"
+            ]
+        },
+        {
+            "Sid": "CloudformationPerms",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:CreateStack",
+                "cloudformation:UpdateStack",
+                "cloudformation:DescribeStacks"
+            ],
+            "Resource": [
+                "arn:aws:cloudformation:*:*:stack/Flashbulb/*"
             ]
         },
         {
